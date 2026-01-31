@@ -31,9 +31,9 @@ use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Components\Fieldset;
 use app\Models\settings;
 use Filament\Actions\Action;
-use app\Models\quotation;
+use app\Models\Quotation;
 use Closure;
-class InvoiceResource extends Resource
+class InvoiceResource_copy extends Resource
 {
     protected static ?string $model = Invoice::class;
 
@@ -42,10 +42,6 @@ class InvoiceResource extends Resource
     protected static ?string $recordTitleAttribute = 'invoice';
     protected static ?int $navigationSort = 4;
 
-    public static function getGloballySearchableAttributes(): array
-{
-    return ['inv_no'];
-}
     public static function form(Schema $schema): Schema
 {   
     $inv_num_job = Invoice::max('id') ?? 0;
@@ -61,42 +57,7 @@ class InvoiceResource extends Resource
      return $schema
     ->components([
         TextInput::make('inv_no')->default($invjob)->label('Invoice Number')->readonly()->required(),
-        Select::make('quote_no')->options($quote)->label('Quote Number')
-        ->reactive()
-   ->afterStateUpdated(function ($state, callable $set, callable $get) {
-
-        if (!$state) {
-            return;
-        }
-
-        // Load quotation with products
-        $quotation = quotation::with('quoteproducts')->find($state);
-
-        if (!$quotation) {
-            return;
-        }
-
-        //
-        // 1️⃣ Auto-fill customer
-        //
-        $set('cust_id', $quotation->quotecust_id);
-
-        //
-        // 2️⃣ Load all quote products into invoice repeater
-        //
-        $items = $quotation->quoteproducts->map(function ($item) {
-            return [
-                'product_id'  => $item->quoteprod_id,   // product ID
-                'quantity'    => $item->quote_quantity,
-                'price'       => $item->quote_price,
-                'total_price' => $item->quote_quantity * $item->quote_price,
-            ];
-        })->toArray();
-
-        $set('invoiceproducts', $items);
-
-        InvoiceResource::recalculateTotals($get, $set);
-    }),
+        Select::make('quote_no')->options($quote)->label('Quote Number'),
         Select::make('status')->label('Payment Status')->options([
                     'pending' => 'Pending',
                     'paid' => 'Paid',

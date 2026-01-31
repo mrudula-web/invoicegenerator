@@ -24,23 +24,27 @@ class SettingsResource extends Resource
 {    
     protected static ?string $model = Settings::class;
   
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
 
     protected static ?string $recordTitleAttribute = 'Settings';
+    protected static ?int $navigationSort = 7;
       protected static bool $isSingleton = true;
-
+ public static function getGloballySearchableAttributes(): array
+{
+    return ['cmpny_name'];
+}
     public static function form(Schema $schema): Schema
     {
         return $schema
         ->components([
-            TextInput::make('cmpny_name')->required(),
-            TextInput::make('cmpny_email')->email(),
-            TextInput::make('cmpny_phone'),
-            TextInput::make('cmpny_address')->required(),
-            TextInput::make('cmpny_other'),
-            TextInput::make('tax_name'),
-            TextInput::make('tax_perc'),
-            TextInput::make('set_currency'),
+            TextInput::make('cmpny_name')->label('Company Name')->required(),
+            TextInput::make('cmpny_email')->label('Company Email')->email(),
+            TextInput::make('cmpny_phone')->label('Company Phone'),
+            TextInput::make('cmpny_address')->label('Company Address')->required(),
+            TextInput::make('cmpny_other')->label('Company Other Details'),
+            TextInput::make('tax_name')->label('Tax Name')->required(),
+            TextInput::make('tax_perc')->label('Tax Percentage')->required(),
+            TextInput::make('set_currency')->label('Currency')->required(),
         ]);
     }
 
@@ -48,14 +52,14 @@ class SettingsResource extends Resource
     {
        return $table
             ->columns([
-                TextColumn::make('cmpny_name')->searchable(),
-                TextColumn::make('cmpny_email')->searchable(),
-                TextColumn::make('cmpny_phone')->searchable(),
-                  
+                TextColumn::make('cmpny_name')->label('Company Name')->searchable(),
+                TextColumn::make('cmpny_email')->label('Company Email')->searchable(),
+                TextColumn::make('cmpny_phone')->label('Company Phone')->searchable(),
+
             ])
              ->actions([
                  EditAction::make(),
-                 DeleteAction::make(),
+                // DeleteAction::make(),
              ]);
     }
 

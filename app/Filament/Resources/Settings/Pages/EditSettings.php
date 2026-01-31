@@ -13,10 +13,18 @@ class EditSettings extends EditRecord
     {
         return 1; // Always use the first record
     }
-    protected function getHeaderActions(): array
+    // protected function getHeaderActions(): array
+    // {
+    //     return [
+    //         DeleteAction::make(),
+    //     ];
+    // }
+     protected function getHeaderActions(): array
     {
-        return [
-            DeleteAction::make(),
-        ];
+        return [];
+    }
+     protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
     }
 }

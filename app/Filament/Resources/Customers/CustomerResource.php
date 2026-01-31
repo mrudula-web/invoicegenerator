@@ -29,20 +29,24 @@ class CustomerResource extends Resource
 {
     protected static ?string $model = Customer::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
 
     protected static ?string $recordTitleAttribute = 'Customers';
-
+    protected static ?int $navigationSort = 1;
+public static function getGloballySearchableAttributes(): array
+{
+    return ['name', 'email', 'phone_no_one'];
+}
     public static function form(Schema $schema): Schema
     {
        return $schema
         ->components([
-            TextInput::make('name')->required(),
-            TextInput::make('company_name'),
-            TextInput::make('email')->email(),
-            TextInput::make('phone_no_one')->required(),
-            TextInput::make('address'),
-            TextInput::make('other_details'),
+            TextInput::make('name')->label('Name')->required(),
+            TextInput::make('company_name')->label('Company Name'),
+            TextInput::make('email')->label('Email')->email(),
+            TextInput::make('phone_no_one')->label('Phone Number One')->required(),
+            TextInput::make('address')->label('Address'),
+            TextInput::make('other_details')->label('Other Details'),
 
             
         ]);
@@ -57,9 +61,9 @@ class CustomerResource extends Resource
     {
        return $table
             ->columns([
-                TextColumn::make('name')->searchable(),
-                TextColumn::make('phone_no_one')->searchable(),
-                TextColumn::make('email')->searchable(),
+                TextColumn::make('name')->label('Name')->searchable(),
+                TextColumn::make('phone_no_one')->label('Phone Number')->searchable(),
+                TextColumn::make('email')->label('Email')->searchable(),
                   
             ])
             ->filters([

@@ -1,22 +1,21 @@
 <?php
 
-namespace App\Filament\Resources\Invoices;
+namespace App\Filament\Resources\Quotations;
 
-use App\Filament\Resources\Invoices\Pages\CreateInvoice;
-use App\Filament\Resources\Invoices\Pages\EditInvoice;
-use App\Filament\Resources\Invoices\Pages\ListInvoices;
-use App\Filament\Resources\Invoices\Schemas\InvoiceForm;
-use App\Filament\Resources\Invoices\Tables\InvoicesTable;
-use App\Models\Invoice;
-use App\Models\invoiceproduct;
-use App\Models\Customer; 
-use App\Models\Product;   
+use App\Filament\Resources\Quotations\Pages\CreateQuotation;
+use App\Filament\Resources\Quotations\Pages\EditQuotation;
+use App\Filament\Resources\Quotations\Pages\ListQuotations;
+use App\Filament\Resources\Quotations\Schemas\QuotationForm;
+use App\Filament\Resources\Quotations\Tables\QuotationsTable;
+use App\Models\Quotation;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Filament\Forms\Components\Select;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -31,108 +30,67 @@ use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Components\Fieldset;
 use app\Models\settings;
 use Filament\Actions\Action;
-use app\Models\quotation;
-use Closure;
-class InvoiceResource extends Resource
+use App\Models\Customer; 
+use App\Models\Product;
+use App\Models\quoteproducts;
+
+
+class QuotationResource extends Resource
 {
-    protected static ?string $model = Invoice::class;
+    protected static ?string $model = Quotation::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShoppingCart;
 
-    protected static ?string $recordTitleAttribute = 'invoice';
-    protected static ?int $navigationSort = 4;
-
-    public static function getGloballySearchableAttributes(): array
+    protected static ?string $recordTitleAttribute = 'quotation';
+    protected static ?int $navigationSort = 3;
+ public static function getGloballySearchableAttributes(): array
 {
-    return ['inv_no'];
+    return ['quote_no'];
 }
     public static function form(Schema $schema): Schema
-{   
-    $inv_num_job = Invoice::max('id') ?? 0;
-    $inv_num_job++;
+    {
+        $quote_num_job = Quotation::max('id') ?? 0;
+    $quote_num_job++;
     $currentYear = date("Y");
-    $invjob = 'ABC-' . $currentYear . '-' . str_pad($inv_num_job, 5, '0', STR_PAD_LEFT);
+    $quotejob = 'ABC-' . $currentYear . '-' . str_pad($quote_num_job, 5, '0', STR_PAD_LEFT);
     $cust = Customer::pluck('name', 'id');
     $product = Product::pluck('prod_name', 'id');
     $taxPerc = Settings::value('tax_perc') ?? 0;
-    $quote = Quotation::pluck('quote_no','id');
-
     
      return $schema
     ->components([
-        TextInput::make('inv_no')->default($invjob)->label('Invoice Number')->readonly()->required(),
-        Select::make('quote_no')->options($quote)->label('Quote Number')
-        ->reactive()
-   ->afterStateUpdated(function ($state, callable $set, callable $get) {
-
-        if (!$state) {
-            return;
-        }
-
-        // Load quotation with products
-        $quotation = quotation::with('quoteproducts')->find($state);
-
-        if (!$quotation) {
-            return;
-        }
-
-        //
-        // 1️⃣ Auto-fill customer
-        //
-        $set('cust_id', $quotation->quotecust_id);
-
-        //
-        // 2️⃣ Load all quote products into invoice repeater
-        //
-        $items = $quotation->quoteproducts->map(function ($item) {
-            return [
-                'product_id'  => $item->quoteprod_id,   // product ID
-                'quantity'    => $item->quote_quantity,
-                'price'       => $item->quote_price,
-                'total_price' => $item->quote_quantity * $item->quote_price,
-            ];
-        })->toArray();
-
-        $set('invoiceproducts', $items);
-
-        InvoiceResource::recalculateTotals($get, $set);
-    }),
-        Select::make('status')->label('Payment Status')->options([
-                    'pending' => 'Pending',
-                    'paid' => 'Paid',
-                    'partial' => 'Partial',
-                ])->default('pending')->required(),
-        Select::make('cust_id')->options($cust)->label('Customer Name')->required(),
-        Repeater::make('invoiceproducts')
-        ->label('Invoice Items')
+        TextInput::make('quote_no')->default($quotejob)->label('Quote Number')->readonly(),
+        Select::make('quotecust_id')->options($cust)->label('Customer Name')->required(),
+        Repeater::make('quoteproducts')
+        ->label('Quote Items')
         ->relationship()
         ->columnSpanFull()
         ->reactive()
         
         ->schema([
-            Select::make('product_id')->options($product)->label('Product')
+            Select::make('quoteprod_id')->options($product)->label('Product')
             ->afterStateUpdated(function (callable $set, $state) {
                 if ($state) {
                     $price = Product::find($state)?->prod_amount ?? 0;
-                    $set('price', $price);
+                    $set('quote_price', $price);
                 }
             })
             ->columnSpan(['md' => 3])
             ->required(),
 
-            TextInput::make('quantity')
+            TextInput::make('quote_quantity')
                 ->label('Qty/Weight')
                 ->numeric()
                 ->required()
                 ->reactive()
                  ->debounce(500)
                 ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                    $price = floatval($get('price') ?? 0);
-                    $set('total_price', $price * floatval($state));
-                  InvoiceResource::recalculateTotals($get, $set);
+                    $price = floatval($get('quote_price') ?? 0);
+                    $set('quotetotal_price', $price * floatval($state));
+                  QuotationResource::recalculateTotals($get, $set);
                 })
                 ->columnSpan(['md' => 2]),
-            Select::make('unit')
+            Select::make('quote_unit')
                 ->label('Unit')
                 ->options([
                     'kg' => 'Kg',
@@ -144,26 +102,26 @@ class InvoiceResource extends Resource
                 ->required()
                 ->columnSpan(['md' => 2]),
 
-            TextInput::make('price')
+            TextInput::make('quote_price')
                 ->label('Price(per unit)')
                 ->numeric()
                 ->required()
                 ->reactive()
                 
                 ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                    $type = $get('type');
-                    $qty = floatval($get('quantity') ?? 0);
-                    $set('total_price', floatval($state) * $qty);
+                    $type = $get('quote_type');
+                    $qty = floatval($get('quote_quantity') ?? 0);
+                    $set('quotetotal_price', floatval($state) * $qty);
                     //InvoiceResource::recalculateTotals($get, $set);
                 })
                 ->columnSpan(['md' => 2]),
 
-            TextInput::make('total_price')
+            TextInput::make('quotetotal_price')
                 ->label('Total Price')
                 ->numeric()
                 ->readonly()
                  ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                    InvoiceResource::recalculateTotals($get, $set);
+                   QuotationResource::recalculateTotals($get, $set);
                 })
                 ->reactive()
                 
@@ -172,7 +130,7 @@ class InvoiceResource extends Resource
                 ,
         ])
         ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                     InvoiceResource::recalculateTotals($get, $set);
+                                    QuotationResource::recalculateTotals($get, $set);
                                  })
         ->columns(12),
         Fieldset::make('')
@@ -183,7 +141,7 @@ class InvoiceResource extends Resource
 
                     Grid::make()
                         ->schema([
-                            Textarea::make('terms')
+                            Textarea::make('quote_terms')
                                 ->label('Terms & Conditions')
                                 ->rows(6)
                                 ->columnSpan(4),
@@ -191,7 +149,7 @@ class InvoiceResource extends Resource
 
                     Grid::make()
                         ->schema([
-                            TextInput::make('inv_subtotal')
+                            TextInput::make('quoteinv_subtotal')
                                 ->label('Subtotal')
                                 ->numeric()
                                 // ->disabled()
@@ -200,25 +158,25 @@ class InvoiceResource extends Resource
                                 
                                 ->columnSpan(4),
 
-                            TextInput::make('inv_tax')
+                            TextInput::make('quoteinv_tax')
                                 ->label('Tax '.$taxPerc.'%')
                                 ->numeric()
                                 ->reactive()
                                 ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                     $taxPerc = Settings::value('tax_perc') ?? 0;
-                                   $tax= $get('inv_subtotal')*($taxPerc/100);
-                                   $set('inv_tax',$tax);
+                                   $tax= $get('quoteinv_subtotal')*($taxPerc/100);
+                                   $set('quoteinv_tax',$tax);
                                         }),
 
-                            TextInput::make('inv_dis')
+                            TextInput::make('quoteinv_dis')
                                 ->label('Discount')
                                 ->numeric()
                                 ->reactive()
                                 ->debounce(250)
                                 ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                    InvoiceResource::recalculateTotals($get, $set);
+                                   QuotationResource::recalculateTotals($get, $set);
                                         }),
-                            TextInput::make('inv_total')
+                            TextInput::make('quoteinv_total')
                                 ->label('Total')
                                 ->numeric()
                                 ->disabled()
@@ -228,16 +186,16 @@ class InvoiceResource extends Resource
                 ])->columnSpanFull(),
         ]),
     ]);
-}
 
+    }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                TextColumn::make('inv_no')->label('Invoice Number')->searchable(),
+                TextColumn::make('quote_no')->label('Quotation Number')->searchable(),
                 TextColumn::make('customer.name')->label('Customer Name'),
-                TextColumn::make('inv_total')->label('Total')->searchable(),
+                TextColumn::make('quoteinv_total')->label('Total')->searchable(),
                   
             ])
             ->filters([
@@ -250,7 +208,7 @@ class InvoiceResource extends Resource
                  Action::make('pdf')
                     ->label('PDF')
                     ->color('success')
-                    ->url(fn ($record): string => route('invoicepdf.report', ['record' => $record]), true),
+                    ->url(fn ($record): string => route('quotation.report', ['record' => $record]), true),
             ])
             
             ->bulkActions([
@@ -270,33 +228,37 @@ class InvoiceResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ListInvoices::route('/'),
-            'create' => CreateInvoice::route('/create'),
-            'edit' => EditInvoice::route('/{record}/edit'),
+            'index' => ListQuotations::route('/'),
+            'create' => CreateQuotation::route('/create'),
+            'edit' => EditQuotation::route('/{record}/edit'),
         ];
     }
-  public static function recalculateTotals( callable $get, callable $set): void
+
+    public static function getRecordRouteBindingEloquentQuery(): Builder
+    {
+        return parent::getRecordRouteBindingEloquentQuery()
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ]);
+    }
+     public static function recalculateTotals( callable $get, callable $set): void
 {    
     // Get all repeater items
-    $items = $get('invoiceproducts')?? []; 
+    $items = $get('quoteproducts')?? []; 
     // Calculate subtotal (sum of total_price)
-    $subtotal = array_reduce($items, fn($carry, $item) => $carry + (floatval($item['quantity'] ?? 0) * floatval($item['price'] ?? 0)), 0);
-    $set('inv_subtotal', $subtotal);
+    $subtotal = array_reduce($items, fn($carry, $item) => $carry + (floatval($item['quote_quantity'] ?? 0) * floatval($item['quote_price'] ?? 0)), 0);
+    $set('quoteinv_subtotal', $subtotal);
     
     // Get tax percentage
     $taxPerc = Settings::value('tax_perc') ?? 0;
     $taxAmount = $subtotal * ($taxPerc / 100);
-    $set('inv_tax', $taxAmount);
+    $set('quoteinv_tax', $taxAmount);
     
     // Get discount
-    $discount = floatval($get('inv_dis') ?? 0);
+    $discount = floatval($get('quoteinv_dis') ?? 0);
     
     // Calculate final total
     $total = $subtotal + $taxAmount - $discount;
-    $set('inv_total', $total);
+    $set('quoteinv_total', $total);
 }
-
-
-
-
 }

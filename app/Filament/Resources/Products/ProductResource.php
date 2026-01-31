@@ -29,18 +29,22 @@ class ProductResource extends Resource
 {
     protected static ?string $model = Product::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCube;
 
     protected static ?string $recordTitleAttribute = 'Products';
-
+    protected static ?int $navigationSort = 2;
+ public static function getGloballySearchableAttributes(): array
+{
+    return ['prod_code', 'prod_name'];
+}
     public static function form(Schema $schema): Schema
     {
          return $schema
         ->components([
-            TextInput::make('prod_code'),
-            TextInput::make('prod_name')->required(),
-            TextInput::make('prod_amount')->required(),
-            TextInput::make('prod_desc'),
+            TextInput::make('prod_code')->label('Product Code'),
+            TextInput::make('prod_name')->label('Product Name')->required(),
+            TextInput::make('prod_amount')->label('Product Amount')->required(),
+            TextInput::make('prod_desc')->label('Product Description'),
             ]);
     }
 
@@ -53,8 +57,8 @@ class ProductResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('prod_name')->searchable(),
-                TextColumn::make('prod_amount'),
+                TextColumn::make('prod_name')->label('Product Name')->searchable(),
+                TextColumn::make('prod_amount')->label('Product Amount')->searchable(),
                
                   
             ])

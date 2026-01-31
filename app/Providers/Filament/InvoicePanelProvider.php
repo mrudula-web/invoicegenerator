@@ -18,6 +18,8 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Filament\Support\Enums\Heroicon;
+
 
 class InvoicePanelProvider extends PanelProvider
 {
@@ -31,11 +33,45 @@ class InvoicePanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
+            ->renderHook(
+    'panels::head.start',
+    fn () => <<<HTML
+        <style>
+            /* Sidebar background */
+            .fi-sidebar {
+                background-color: #001f3f !important; /* Navy Blue */
+            }
+
+            /* Sidebar item text */
+            .fi-sidebar-item-label {
+                color: #ffffff !important;
+            }
+
+    .fi-sidebar-item.fi-active > .fi-sidebar-item-btn {
+    background-color: rgb(102, 102, 132);
+         }
+         .fi-sidebar-item > .fi-sidebar-item-btn:hover {
+    background-color: rgb(102, 102, 132) !important;
+           }
+         .fi-ac-btn-action{
+    background-color: #001f3f !important;
+    color: #ffffff !important;
+         }
+      .fi-header {
+    text-transform: uppercase !important;
+         }
+
+        </style>
+    HTML
+)
+
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
-            ->pages([
-                Dashboard::class,
-            ])
+           ->pages([
+    \App\Filament\Pages\CustomDashboard::class,
+])
+
+
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
                 AccountWidget::class,

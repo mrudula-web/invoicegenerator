@@ -10,5 +10,11 @@ class receipt extends Model
         'inv_num',
         'rec_amount',
         'rec_status',
+        'cust_id',
     ]; 
+
+      public function invoice()
+    {
+    return $this->belongsTo(Invoice::class, 'inv_num');
+    }
 }
